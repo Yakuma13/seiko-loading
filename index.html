@@ -253,34 +253,6 @@
   .corner.left  { left: 20px; }
   .corner.right { right: 20px; }
 
-  /* clic invisible pour debloquer son */
-  #unlock {
-    position: fixed;
-    inset: 0;
-    z-index: 999;
-    background: rgba(0,0,0,0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-  #unlock .box {
-    padding: 20px 40px;
-    background: rgba(15,5,30,0.85);
-    border: 1px solid #ff6fb0;
-    border-radius: 12px;
-    text-align: center;
-  }
-  #unlock .box .big {
-    font-size: 48px;
-    color: #ff6fb0;
-    margin-bottom: 10px;
-  }
-  #unlock .box .txt {
-    font-size: 14px;
-    color: #fff;
-    letter-spacing: 3px;
-  }
 </style>
 </head>
 <body>
@@ -328,7 +300,6 @@
 <div class="corner left" id="cornerLeft">discord.gg/seiko-nrp</div>
 <div class="corner right">v1.0.0 — © SEIKO 2026</div>
 
-<div id="unlock"><div class="box"><div class="big">&#9835;</div><div class="txt">CLIQUEZ POUR ACTIVER LE SON</div></div></div>
 
 <script>
 (function(){
@@ -415,23 +386,33 @@
 
   render(parseInt(slider.value, 10));
 
-  // === UNLOCK SON ===
+  // === SON ===
+  // Autoplay direct avec son (fonctionne en GMOD CEF).
+  // Les navigateurs modernes bloquent et on doit attendre une interaction utilisateur.
+  let soundUnlocked = false;
   function unlockAudio(){
+    if (soundUnlocked) return;
+    soundUnlocked = true;
     video.muted = false;
     video.volume = parseInt(slider.value, 10) / 100;
     video.play().catch(()=>{});
-    unlock.style.display = 'none';
   }
-  unlock.addEventListener('click', unlockAudio);
+  // En navigateur : debloque au premier clic, touche, mouvement ou scroll
+  document.addEventListener('click', unlockAudio, { passive: true });
+  document.addEventListener('keydown', unlockAudio, { passive: true });
+  document.addEventListener('mousemove', unlockAudio, { passive: true });
+  document.addEventListener('touchstart', unlockAudio, { passive: true });
+  document.addEventListener('wheel', unlockAudio, { passive: true });
 
-  // tente autoplay direct
+  // Tente autoplay avec son
+  video.muted = false;
+  video.volume = parseInt(slider.value, 10) / 100;
   video.play().then(() => {
-    // GMOD CEF autorise souvent le son direct
-    video.muted = false;
-    video.volume = parseInt(slider.value, 10) / 100;
-    unlock.style.display = 'none';
+    soundUnlocked = true;
   }).catch(() => {
-    // navigateur bloque => garde le bouton unlock
+    // Navigateur bloque => joue muet jusqu'a interaction
+    video.muted = true;
+    video.play().catch(()=>{});
   });
 
   // compteur de chargement
