@@ -141,8 +141,8 @@
     font-family: monospace;
   }
 
-  /* === VOLUME CONTROL EN BAS === */
-  .volume-bar {
+  /* === HINT EN BAS === */
+  .mute-hint {
     position: fixed;
     bottom: 40px;
     left: 50%;
@@ -150,15 +150,18 @@
     z-index: 10;
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 12px 22px;
-    background: rgba(15, 5, 30, 0.78);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(177, 76, 255, 0.4);
+    gap: 10px;
+    padding: 10px 20px;
+    background: rgba(15, 5, 30, 0.72);
+    border: 1px solid rgba(177, 76, 255, 0.35);
     border-radius: 999px;
-    box-shadow: 0 8px 30px rgba(177, 76, 255, 0.25);
+    font-size: 13px;
+    color: #ffb3d1;
+    letter-spacing: 1px;
+    transition: opacity 0.5s;
   }
+  .mute-hint.hidden { opacity: 0; pointer-events: none; }
+  .mute-hint b { color: #fff; font-weight: 700; padding: 2px 8px; background: rgba(177, 76, 255, 0.3); border-radius: 4px; }
   .vol-icon {
     width: 28px;
     height: 28px;
@@ -291,18 +294,9 @@
   <div class="loading-percent" id="pct">INITIALISATION...</div>
 </div>
 
-<div class="volume-bar">
-  <div class="vol-hint">VOLUME</div>
-  <div class="vol-icon" id="volIcon" title="Muet / Reactiver">
-    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4a1 1 0 0 0 1.7-.7V5.7A1 1 0 0 0 11 5L7 9H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M18 5a9 9 0 0 1 0 14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-  </div>
-  <div class="slider-wrap">
-    <div class="slider-track">
-      <div class="slider-fill" id="volFill"></div>
-    </div>
-    <input type="range" class="vol-slider" id="volSlider" min="0" max="100" value="70">
-  </div>
-  <div class="vol-value" id="volValue">70%</div>
+<div class="mute-hint" id="muteHint">
+  <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4a1 1 0 0 0 1.7-.7V5.7A1 1 0 0 0 11 5L7 9H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+  <span>Appuie sur <b>ESPACE</b> pour couper le son</span>
 </div>
 
 <div class="corner left" id="cornerLeft">discord.gg/seiko-nrp</div>
@@ -338,89 +332,38 @@
     if (u.get('maxplayers')) svPl.textContent  = '0/' + u.get('maxplayers');
   } catch(e){}
 
-  // === VOLUME ===
-  const video   = document.getElementById('bgAudio');
-  const slider  = document.getElementById('volSlider');
-  const fill    = document.getElementById('volFill');
-  const value   = document.getElementById('volValue');
-  const icon    = document.getElementById('volIcon');
-  const unlock  = document.getElementById('unlock');
-  const pct     = document.getElementById('pct');
-
-  let lastVol = 70;
-  let muted   = false;
-
-  const ICONS = {
-    mute: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4a1 1 0 0 0 1.7-.7V5.7A1 1 0 0 0 11 5L7 9H4a1 1 0 0 0-1 1z"/><line x1="15" y1="9" x2="21" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="21" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-    low:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4a1 1 0 0 0 1.7-.7V5.7A1 1 0 0 0 11 5L7 9H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
-    high: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4a1 1 0 0 0 1.7-.7V5.7A1 1 0 0 0 11 5L7 9H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M18 5a9 9 0 0 1 0 14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>'
-  };
-
-  function render(v){
-    fill.style.width  = v + '%';
-    value.textContent = v + '%';
-    video.volume      = v / 100;
-    if (v == 0)       icon.innerHTML = ICONS.mute;
-    else if (v < 50)  icon.innerHTML = ICONS.low;
-    else              icon.innerHTML = ICONS.high;
-    // sauvegarde
-    try { localStorage.setItem('seikoVol', v); } catch(e){}
-  }
-
-  // restore volume
-  try {
-    var saved = localStorage.getItem('seikoVol');
-    if (saved !== null) { slider.value = saved; lastVol = parseInt(saved,10); }
-  } catch(e){}
-
-  slider.addEventListener('input', () => {
-    muted = false;
-    lastVol = parseInt(slider.value, 10);
-    render(lastVol);
-  });
-
-  icon.addEventListener('click', () => {
-    if (muted) {
-      muted = false;
-      slider.value = lastVol || 70;
-      render(parseInt(slider.value, 10));
-    } else {
-      muted = true;
-      lastVol = parseInt(slider.value, 10) || 70;
-      slider.value = 0;
-      render(0);
-    }
-  });
-
-  render(parseInt(slider.value, 10));
-
   // === SON ===
-  // Autoplay direct avec son (fonctionne en GMOD CEF).
-  // Les navigateurs modernes bloquent et on doit attendre une interaction utilisateur.
-  let soundUnlocked = false;
-  function unlockAudio(){
-    if (soundUnlocked) return;
-    soundUnlocked = true;
-    video.muted = false;
-    video.volume = parseInt(slider.value, 10) / 100;
-    video.play().catch(()=>{});
-  }
-  // En navigateur : debloque au premier clic, touche, mouvement ou scroll
-  document.addEventListener('click', unlockAudio, { passive: true });
-  document.addEventListener('keydown', unlockAudio, { passive: true });
-  document.addEventListener('mousemove', unlockAudio, { passive: true });
-  document.addEventListener('touchstart', unlockAudio, { passive: true });
-  document.addEventListener('wheel', unlockAudio, { passive: true });
+  const audio = document.getElementById('bgAudio');
+  const hint  = document.getElementById('muteHint');
+  const pct   = document.getElementById('pct');
 
-  // Tente autoplay avec son
-  video.muted = false;
-  video.volume = parseInt(slider.value, 10) / 100;
-  video.play().then(() => {
-    soundUnlocked = true;
-  }).catch(() => {
-    // Navigateur bloque => joue muet jusqu'a interaction
-    video.muted = true;
-    video.play().catch(()=>{});
+  const DEFAULT_VOL = 0.20;
+  let muted = false;
+
+  audio.volume = DEFAULT_VOL;
+
+  // Tente autoplay (fonctionne en GMOD CEF; navigateurs bloquent mais on s'en moque ici)
+  audio.play().catch(() => {
+    // Si bloque en navigateur, on debloquera au premier clic/touche
+    const unlock = () => {
+      audio.volume = muted ? 0 : DEFAULT_VOL;
+      audio.play().catch(()=>{});
+    };
+    document.addEventListener('click', unlock, { once: true, passive: true });
+  });
+
+  // ESPACE = toggle mute/unmute
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.key === ' ' || e.keyCode === 32) {
+      e.preventDefault();
+      muted = !muted;
+      audio.volume = muted ? 0 : DEFAULT_VOL;
+      if (muted) {
+        hint.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4a1 1 0 0 0 1.7-.7V5.7A1 1 0 0 0 11 5L7 9H4a1 1 0 0 0-1 1z"/><line x1="15" y1="9" x2="21" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="21" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Son coupe — <b>ESPACE</b> pour reactiver</span>';
+      } else {
+        hint.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4a1 1 0 0 0 1.7-.7V5.7A1 1 0 0 0 11 5L7 9H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg><span>Appuie sur <b>ESPACE</b> pour couper le son</span>';
+      }
+    }
   });
 
   // compteur de chargement
